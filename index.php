@@ -44,16 +44,16 @@
 <div class="container">
   <div class="row">
     <div class="col-sm-4">
-<form action="payment.php" method="post" id="payment-form">
+<!-- <form action="payment.php" method="post" id="payment-form">
   <div class="form-row">
     <label for="card-element">
       Credit or debit card
     </label>
     <div id="card-element">
-      <!-- A Stripe Element will be inserted here. -->
+     
     </div>
 
-    <!-- Used to display form errors. -->
+   
     <div id="card-errors" role="alert"></div>
   </div>
 
@@ -63,13 +63,27 @@
         Pay Now
     </span>
 </button>
-</form>
+</form> -->
 
 </div>
   </div>
 </div>
 
+<form action="payment.php" method="post">
+  <script src="https://checkout.stripe.com/checkout.js" class="stripe-button"
+          data-key="pk_test_51H8leNBm0cWKkJ8zZ5dHVXaJ16Ng8w1vC38ZjYrZNCAJvQeyQVeN9fmI1dC2blPLJVdSeHRE2hQWdFSha6vMqfbn003wfDeHxT"
+          data-description="Access for a year"
+          data-amount="5000"
+          data-locale="auto"></script>
+</form>
 
+<!-- <div class='form-row row'>
+                            <div class='col-xs-12 form-group card-new'>
+                                <label class='control-label'>Coupon Code</label> 
+                                        <input  class='form-control card-new' type=text size="6" id="coupon" name="coupon_code"  size='50'/>
+                                      <span id="msg"></span>
+                            </div>
+                        </div> -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
@@ -78,7 +92,7 @@
 
 
 <script>// Create a Stripe client.
-var stripe = Stripe('pk_test_7Yi0b5LaoZymhyA8IBY8k2Im00OtUsprKy');
+var stripe = Stripe('pk_test_51H8leNBm0cWKkJ8zZ5dHVXaJ16Ng8w1vC38ZjYrZNCAJvQeyQVeN9fmI1dC2blPLJVdSeHRE2hQWdFSha6vMqfbn003wfDeHxT');
 
 // Create an instance of Elements.
 var elements = stripe.elements();
@@ -147,6 +161,28 @@ function stripeTokenHandler(token) {
   // Submit the form
   form.submit();
 }
+
+// Coupons code validate or not api code call to ajex it return true if coupon is valid
+
+$('#coupon').change(function(){
+    requestData = "coupon_code="+$('#coupon').val();
+    var coupon_code = $('#coupon').val();
+    $.ajax({
+      type: "GET",
+      url: "{{route('validate-coupon')}}/"+coupon_code,
+      data: requestData,
+      success: function(response){
+          console.log("coupen-response",response);
+        if (response.success==true) {
+          $('#msg').html('<div class="alert-success">Valid Code!</div>');
+        } else {
+          $('#msg').html('<div class="alert-danger">Invalid Code!</div>');
+        }
+      }
+    });
+  });
+//  Coupons code validate or not api code call to ajex it return true if coupon is valid end
+
 
 </script>
 

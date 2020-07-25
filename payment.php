@@ -1,51 +1,92 @@
 <?php 
 
 
-define('STRIPE_API_KEY', 'sk_test_3B5ebao8gkz3CGnqJxUgDGkf00j4cHVOVr'); 
-define('STRIPE_PUBLISHABLE_KEY', 'pk_test_7Yi0b5LaoZymhyA8IBY8k2Im00OtUsprKy'); 
+/*
+* @Author: Satish p.
+* @ purpose: Using Checkout and PHP with stripe
+* @params:
+* STRIPE_API_KEY: String
+* STRIPE_PUBLISHABLE_KEY: String
+*/
 
- 
-$payment_id = $statusMsg = ''; 
-$ordStatus = 'error'; 
- 
-// Check whether stripe token is not empty 
 
-     
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+  Configuration
+-------------*/
+
+define('STRIPE_API_KEY', 'sk_test_51H8leNBm0cWKkJ8zUYyRdlE5Cb2EqzG9JBhA3E5ENY9HIVd9vZT6rVWf9INDag2e3L50wXfSK58LIQ1BBAc6ozlS007QrwwAu1'); 
+define('STRIPE_PUBLISHABLE_KEY', 'pk_test_51H8leNBm0cWKkJ8zZ5dHVXaJ16Ng8w1vC38ZjYrZNCAJvQeyQVeN9fmI1dC2blPLJVdSeHRE2hQWdFSha6vMqfbn003wfDeHxT'); 
+ // Include Stripe PHP library 
+ require_once('vendor/autoload.php');
+ require_once('vendor/stripe/stripe-php/init.php'); 
+ // Set API key 
+ \Stripe\Stripe::setApiKey(STRIPE_API_KEY); 
+ // Set API key  with variable
+ $stripe = new \Stripe\StripeClient(STRIPE_API_KEY);
+
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+ Configuration end
+-------------*/
+
+
+     //Using Checkout and PHP 
     // Retrieve stripe token, card and user info from the submitted form data 
     $token  = $_POST['stripeToken']; 
-    //  $name = $_POST['name']; 
-    //  $email = $_POST['email'];
+    $email  = $_POST['stripeEmail'];
+    $response = [];
+
+    try{
+     $customer = \Stripe\Customer::create([
+      'email' => $email,
+      'name' => "Satish p.",
+      'source'  => $token,
+      'address' => [
+        'line1' => '510 Townsend St',
+        'postal_code' => '98140',
+        'city' => 'San Francisco',
+        'state' => 'CA',
+        'country' => 'US',
+      ],
+     ]);
+
+     $response["customer"] = $customer;
+
+
+    $charge = \Stripe\Charge::create([
+        'customer' => $customer->id,
+        'amount'   => 5000,
+        'currency' => 'usd',
+        "description" => "Test payment from satish testing mode."
+    ]); 
+   
+
+     echo '<h1>Successfully charged $50.00!</h1>';
+     echo "<pre>";
+
+    $response["charge"] = $charge;
+
+    }catch(Exception $e) {
+      $response["error"] = $e;
+  }
+     echo "<pre>";
+     print_r($response);
+ die;  
+
+
+
+ $payment_id = $statusMsg = ''; 
+ $ordStatus = 'error'; 
 
      $name = "test"; 
-     $email = "armorier@jacknini.cf"; 
-
+     //  $email = "profwork.sp18@gmail.com"; 
+ 
      $itemName = "Demo Product"; 
-    $itemNumber = "PN12345"; 
-    // $itemPrice = 25; 
-    // $currency = "USD"; 
-
-    $itemPrice = 2000; 
-    $currency = "INR"; 
-
-    require_once('vendor/autoload.php');
-    // Include Stripe PHP library 
-   // require_once 'stripe-php/init.php'; 
-     require_once('vendor/stripe/stripe-php/init.php'); 
-    // Set API key 
-    \Stripe\Stripe::setApiKey(STRIPE_API_KEY); 
-     
-
-     $response = [];
-
-
-     
-     $stripe = new \Stripe\StripeClient(
-        'sk_test_3B5ebao8gkz3CGnqJxUgDGkf00j4cHVOVr'
-      );
-
-
-     
-  
+     $itemNumber = "PN12345"; 
+     // $itemPrice = 25; 
+     // $currency = "USD"; 
+ 
+     $itemPrice = 2000; 
+     $currency = "INR";
 
     $plan = Stripe\Plan::create(array(
         "product" => [
@@ -61,6 +102,7 @@ $ordStatus = 'error';
     $response["plan"] = $plan;
     
     $customer = \Stripe\Customer::create(array(
+        'email' => $email,
         'name' => $name,
         'address' => [
             'line1' => '510 Townsend St',
@@ -111,97 +153,74 @@ $ordStatus = 'error';
 
       $response["paymentMethods"] = $stripe;
 
-      // Coupons code
-         //  dd("TRY");
-         Stripe\Stripe::setApiKey($site->stripe_secret);
-         $customer = Stripe\Customer::create([
-             'email' => $request->customer_email,
-             'source' => $request->stripeToken,
-             'name' => $request->payer_name,
-         ]);
-         // Use Stripe's library to make requests...
 
-           $booking_amount = $request->booking_amount;
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+  Coupons code
+-------------*/
+                  Stripe\Stripe::setApiKey($site->stripe_secret);
+                   $customer = Stripe\Customer::create([
+                       'email' => $request->customer_email,
+                       'source' => $request->stripeToken,
+                       'name' => $request->payer_name,
+                   ]);
+                     $booking_amount = $request->booking_amount;
+                    if(isset($request->coupon_code) && $request->coupon_code!=null){
+                   try{
+                       $coupon_code = $request->coupon_code;
+                       $coupon = \Stripe\Coupon::retrieve($coupon_code, []);
+                       $amount_off = ($coupon->amount_off) / 100;
+                       $percentage_off = ($coupon->percent_off);
+                       $booking_amount = $booking_amount - ($request->booking_amount * $percentage_off / 100);
+                    
+                   }catch(Exception $e) {
+                       return view('PaymentFailedBooking',["booking_id"=>$request->booking_id]);
+                   }
+               }
+              
+                  $charge = Stripe\Charge::create([
+                      "amount" => $booking_amount * 100,
+                      "currency" => $site->currency_code,
+                      "customer" =>$customer->id,
+                      "description" => "Test payment from PartyPerfect.com."
+                  ]);
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+  Coupons code end
+-------------*/
+ 
 
-           if(isset($request->coupon_code) && $request->coupon_code!=null){
-         try{
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+  Coupons code validate or not api code call to ajex it return true if coupon is valid
+-------------*/
 
-            // $stripe = new \Stripe\StripeClient($site->stripe_secret);
+     function ValidateCouponStripe($coupon_code=null)
+    {
 
-             $coupon_code = $request->coupon_code;
+        if($coupon_code!=null){
+            try{
+                $site = getFooterDetails();
+                \Stripe\Stripe::setApiKey($site->stripe_secret);
+                $coupon = \Stripe\Coupon::retrieve($coupon_code, []);
+               if ($coupon->valid) {
+                    return response()->json(['success'=>true]);
+                }else{
+                    return response()->json(['success'=>false]);
+                }
+                
+            }catch(Exception $e) {
+               // $errArr['error'] = $e->getMessage();
+              //  echo json_encode($errArr);
 
-             $coupon = \Stripe\Coupon::retrieve($coupon_code, []);
-     
-             $amount_off = ($coupon->amount_off) / 100;
-             $percentage_off = ($coupon->percent_off);
-             // $discountType = array();
-             // if($amount_off != ""){
-             //     $discountType['type'] = "amount";
-             //     $discountType['off'] = $amount_off;
-             // }else if($percentage_off != ""){
-             //     $discountType['type'] = "percentage";
-             //     $discountType['off'] = $percentage_off;
-             // }
-
-             $booking_amount = $booking_amount - ($request->booking_amount * $percentage_off / 100);
-             
-           
-         }catch(Exception $e) {
-             return view('PaymentFailedBooking',["booking_id"=>$request->booking_id]);
-         }
-     }
-     
-     
-     $charge = Stripe\Charge::create([
-         "amount" => $booking_amount * 100,
-         "currency" => $site->currency_code,
-         "customer" =>$customer->id,
-         "description" => "Test payment from PartyPerfect.com."
-     ]);
-      // Coupons code end
-
-
-   
-
-
-    echo "<pre>";
-    print_r($response);
-die;
-
-
-
-    // $subscription = Stripe\Subscription::create(array(
-    //     "customer" => $customer->id,
-    //     "items" => array(
-    //         array(
-    //             "plan" => $plan->id,
-    //         ),
-    //     ),
-    // ));
-
-    $subscription = Stripe\Subscription::create(array(
-        'customer' => 'cus_HcskkbWBwQIvjw',
-        'items' => [
-          ['price' => 'price_1H2jVH2eZvKYlo2ChEOvuoVt'],
-        ],
-    ));
+              return response()->json(['success'=>false]);
+            }
+        }
+        
+    }
+/* ----------------------------------------------------------------------------------------------------------------------------------------
+  Coupons code
+-------------*/
 
 
+//  @Author: Satish p. end code
 
-
-
-
-
-    echo "<pre>";
-    print_r($subscription);
-
-    $array_response = $subscription->jsonSerialize();
-    $json_response = json_encode($array_response,true);
-
-
-    echo "<pre>";
-    print_r($json_response);
-
-  
 ?>
 
